@@ -1,0 +1,11 @@
+impl/
+# Gowin IP Cores and Generated Artefacts
+fifo_out/
+fifo_top/
+gowin_rpll/
+gowin_sdp/
+sdram_controller_hs/
+SDRAM_controller_top_SIP/
+fpgamandelbrot.gprj
+fpgamandelbrot.gprj.user
+dvi_tx.v

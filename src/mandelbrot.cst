@@ -1,0 +1,32 @@
+
+IO_LOC "clk_in" 4;
+IO_LOC "led" 15;
+IO_LOC "button" 88;
+// Example correction in your .cst file
+IO_PORT "clk_in" IO_TYPE=LVCMOS33;
+IO_PORT "led" IO_TYPE=LVCMOS33;
+IO_PORT "button" IO_TYPE=LVCMOS33;
+
+// 3. HDMI Output - Clock Differential Pair
+IO_LOC "tmds_clk_p" 33;
+IO_PORT "tmds_clk_p" PULL_MODE=NONE;
+IO_LOC "tmds_clk_n" 34;
+IO_PORT "tmds_clk_n" PULL_MODE=NONE;
+
+// 4. HDMI Output - Data Channel 0 (Blue / Sync)
+IO_LOC "tmds_data_p[0]" 35;
+IO_PORT "tmds_data_p[0]" PULL_MODE=NONE;
+IO_LOC "tmds_data_n[0]" 36;
+IO_PORT "tmds_data_n[0]" PULL_MODE=NONE;
+
+// 5. HDMI Output - Data Channel 1 (Green)
+IO_LOC "tmds_data_p[1]" 37;
+IO_PORT "tmds_data_p[1]" PULL_MODE=NONE;
+IO_LOC "tmds_data_n[1]" 38;
+IO_PORT "tmds_data_n[1]" PULL_MODE=NONE;
+
+// 6. HDMI Output - Data Channel 2 (Red)
+IO_LOC "tmds_data_p[2]" 39;
+IO_PORT "tmds_data_p[2]" PULL_MODE=NONE;
+IO_LOC "tmds_data_n[2]" 40;
+IO_PORT "tmds_data_n[2]" PULL_MODE=NONE;
