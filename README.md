@@ -106,13 +106,31 @@ A 1650×750 counter pair generates the standard 720p60 timing (hsync, vsync, dat
 - **Stale FIFO contents at frame start:** the read FIFO prefetches across the frame boundary, so the read address and the FIFO have to be reset together. This is done in vertical blanking.
 - **Timing margin:** `clk_medium` closes with only about 1.5% slack (75.4 MHz against 74.25 MHz), and some builds behaved differently from others without any code change. The critical path is not in the compute engine and I haven't tracked it down yet.
 
-## Possible next steps
+## Possible next step
 
-- Double-buffered framebuffer for a tear-free picture
-- Colour palette instead of grey bands
-- More fractional bits and a higher iteration limit for deeper zooms; or several iteration engines in parallel for faster frames
-- A proper phase-shifted PLL output for the SDRAM clock instead of the inverted controller clock
-- Cheap early-out for points inside the main cardioid and the period-2 bulb
+### Idea
+Keep several independent pixels in flight in the mandelbrot calculation pipeline. Each pixel's
+iteration only depends on itself, so with 3 pixels in rotation, the multipliers
+can start a new product every cycle. This gives up to ~3x throughput with no
+additional DSP blocks.
+
+### Planned design
+- 3  slots, each holding its own `zx, zy, cx, cy, iter, valid`
+- A rotating slot pointer feeds one slot per cycle into the multiplier stage
+- Escape/max-iter results are checked at the end of the pipeline; a finished
+  slot is retired and reloaded with the next pixel coordinate
+- Coordinate generator hands out the next (x, y) on demand (still adders only)
+
+### Main challenge: output ordering
+Pixels finish after different iteration counts, but the framebuffer is written
+in raster order. Options:
+1. In-order retirement: a finished slot waits until it is the oldest pixel
+   (simple, loses some throughput)
+2. Small reorder buffer in BRAM indexed by pixel position (better utilization,
+   more logic)
+
+Also, replicating cores is a possible next step, however limited to number of DSPs on the FPGA. Current utilization is about 30% of DSPs, so around 3 cores fit, but Fmax margin is only 1.5%, so timing would need work first.
+
 
 ## Credits
 
