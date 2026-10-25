@@ -9,3 +9,6 @@ SDRAM_controller_top_SIP/
 fpgamandelbrot.gprj
 fpgamandelbrot.gprj.user
 dvi_tx.v
+Makefile
+obj/
+wave.vcd

@@ -80,19 +80,19 @@ module mandelbrot (
     localparam F = 28;
     localparam W = F + 4;
 
-    // centre of the zoom (Seahorse Valley), already multiplied by 2^F. If changing F recompute:
+    // centre of the zoom (Seahorse Valley), already multiplied by 2^F. to get value:
     //   python3 -c "F=28; print(round(-0.743643887037151*2**F), round(0.131825904205330*2**F))"
     localparam signed [W-1:0] CX = -199620386;     // -0.743643887037151
     localparam signed [W-1:0] CY =   35386747;     //  0.131825904205330
 
-    // zoom: distance between two pixels in Q.F units (smaller = more zoomed in)
-    localparam signed [W-1:0] STEP0    = 45 << (F-14);   // start view = your "45" at F=14 (width ~3.5)
-    localparam signed [W-1:0] MIN_STEP = 200;            // stop at about 1000x, then start over
+    // zoom: distance between two pixels in Q.F units 
+    localparam signed [W-1:0] STEP0    = 737280;   // start view = your "45" at F=14 (width ~3.5)
+    localparam signed [W-1:0] MIN_STEP = 200;            // stop at about 4000x, then start over
     localparam ZOOM_SHIFT = 3;                           // per finished frame: step -= step >> 3 (12.5 %) bits shifted
 
     reg  signed [W-1:0] step = STEP0;
     wire at_min = (step <= MIN_STEP);
-    wire signed [W-1:0] step_next = at_min ? STEP0 : (step - (step >>> ZOOM_SHIFT));
+    wire signed [W-1:0] step_next = at_min ? STEP0 : (step - (step >>> ZOOM_SHIFT)); //  7/8
 
     // top-left corner of the view; registered, follows `step` one clock later
     reg signed [W-1:0] x0r = CX - 640 * STEP0;
@@ -261,7 +261,6 @@ module mandelbrot (
     // no new commands while the read FIFO is flushed (lines 736..741, i.e. vertical blanking)
     wire no_new_cmd = (yBeam >= 736) && (yBeam <= 741);
 
-    // ONE always block drives all of these registers
     always @(posedge clk_medium) begin
         I_sdrc_wr_n <= 1'b1;
         I_sdrc_rd_n <= 1'b1;
@@ -272,7 +271,7 @@ module mandelbrot (
         case (arbiter_state)
             IDLE: begin
                 if (sdram_init_done && O_sdrc_busy_n) begin
-                    if ((fifo_out_almost_empty || fifo_out_empty) && !no_new_cmd) begin
+                    if ((fifo_out_almost_empty || fifo_out_empty) && !no_new_cmd) begin // priority on fifo_out to hdmi
                         I_sdrc_addr   <= sdram_read_addr;
                         I_sdrc_rd_n   <= 1'b0;
                         is_reading    <= 1'b1;
@@ -303,7 +302,8 @@ module mandelbrot (
         endcase
 
         // once per frame, in the middle of vertical blanking: flush read FIFO, restart read pointer
-        // (placed after the case so it wins; no read ack can happen here because of no_new_cmd)
+        // no read fifo can happen here because of no_new_cmd)
+        // Reason is fifo_out has to have pixels for 0 0 ready when DE is turned on at xybeam 00 (no garbage data and skewed picture)
         fifo_out_rst <= (yBeam == 740) && (xBeam < 8);
         if (yBeam == 740 && xBeam == 0)
             sdram_read_addr <= 0;
