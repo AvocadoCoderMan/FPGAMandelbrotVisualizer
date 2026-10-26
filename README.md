@@ -93,7 +93,7 @@ A 1650×750 counter pair generates the standard 720p60 timing (hsync, vsync, dat
 
 ## Results
 
-- **Timing:** `clk_medium` (74.25 MHz) closes with a maximum frequency of about 75.4 MHz.
+- **Timing:** `clk_medium` (74.25 MHz) closes with a maximum frequency of about 83.790 MHz, so enough slack.
 - **DSP:** 3× `MULT36X36` and 1× `MULTALU36X18`.
 - **Zoom range:** about 1000× by default. Roughly 20,000× is possible with the current format before rounding noise appears; more needs more fractional bits and a higher iteration limit.
 
@@ -104,15 +104,27 @@ A 1650×750 counter pair generates the standard 720p60 timing (hsync, vsync, dat
 - **SDRAM burst length:** the controller transfers `data_len + 1` words. Setting `data_len = 64` made every burst 65 words long, which skewed the picture by 20 pixels per row. The correct value for 64 words is 63.
 - **FIFO flags:** `Almost_Empty` goes low again when the FIFO is completely empty, so the arbiter has to check `Empty` as well, or it stalls.
 - **Stale FIFO contents at frame start:** the read FIFO prefetches across the frame boundary, so the read address and the FIFO have to be reset together. This is done in vertical blanking.
-- **Timing margin:** `clk_medium` closes with only about 1.5% slack (75.4 MHz against 74.25 MHz), and some builds behaved differently from others without any code change. The critical path is not in the compute engine and I haven't tracked it down yet.
+- **Timing margin:** `clk_medium` closes at a 74.25 MHz target with Fmax 83.8 MHz (about 1.5 ns of slack, 11% of the clock period). The critical path is not in the compute engine. It runs from the read FIFO's block RAM output through the `DE` gate into the Gowin TMDS encoder. Registering `pixel_from_fifo`, `DE` and the sync signals would shorten it, but the slack is enough for now.
 
-## Possible next steps
 
-- Double-buffered framebuffer for a tear-free picture
-- Colour palette instead of grey bands
-- More fractional bits and a higher iteration limit for deeper zooms; or several iteration engines in parallel for faster frames
-- A proper phase-shifted PLL output for the SDRAM clock instead of the inverted controller clock
-- Cheap early-out for points inside the main cardioid and the period-2 bulb
+## Next step (not implemented): pixel interleaving
+
+**Problem:** The compute loop (PROD → ADD → CHECK) handles one pixel at a time.
+The multipliers sit idle about 2/3 of the time.
+
+**Idea:** Keep several independent pixels in flight. Each pixel's iteration only
+depends on itself, so with 3 pixels in rotation a new product can start every
+cycle: up to ~3x throughput with no extra DSPs.
+
+**Design sketch**
+- Register arrays for `zx, zy, cx, cy, iter` (one entry per pixel in flight)
+- A rotating index selects which pixel enters the multipliers each cycle, and
+  travels down the stages as a tag so results go back to the right entry
+- Replace the FSM with free-running stages (every stage works every cycle)
+
+**Main challenge, output ordering:** Pixels finish after different iteration
+counts, but the framebuffer is written in raster order. A finished pixel could
+wait until it is the oldest one in flight.
 
 ## Credits
 
